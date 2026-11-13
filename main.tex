@@ -1,0 +1,226 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype}
+\usepackage[margin=25mm,inner=30mm,top=30mm]{geometry}
+\usepackage{setspace}
+\setstretch{1.3}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\usepackage{xcolor,graphicx,float,booktabs,caption}
+\usepackage{fancyhdr}
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue]{hyperref}
+\usepackage{xurl}
+\usepackage{listings}
+\usepackage[section]{placeins}
+\definecolor{azulusm}{HTML}{174B79}
+\definecolor{sqlbg}{HTML}{F4F6F9}
+\lstdefinelanguage{MySQLLab}{
+ language=SQL,
+ morekeywords={AUTO_INCREMENT,DECIMAL,ENUM,SHOW,SET,SQL_SAFE_UPDATES,COALESCE},
+ sensitive=false
+}
+\lstdefinestyle{sqlusm}{
+ language=MySQLLab,basicstyle=\ttfamily\footnotesize,
+ keywordstyle=\color{azulusm}\bfseries,
+ commentstyle=\color{gray},stringstyle=\color{teal!65!black},
+ breaklines=true,breakatwhitespace=false,
+ backgroundcolor=\color{sqlbg},frame=single,rulecolor=\color{black!25},
+ columns=fullflexible,keepspaces=true,showstringspaces=false,
+ xleftmargin=3pt,xrightmargin=3pt,
+ literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+ {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1
+ {ñ}{{\~n}}1 {Ñ}{{\~N}}1 {ü}{{\"u}}1
+}
+\lstset{style=sqlusm}
+\newcommand{\theCampus}{Campus Vitacura}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\IfFileExists{Logo_UTFSM.png}{\includegraphics[height=0.9cm]{Logo_UTFSM.png}}{\small\bfseries Universidad Técnica Federico Santa María}}
+\fancyfoot[L]{\scriptsize Laboratorio N.º 5}
+\fancyfoot[C]{\thepage}
+\fancyfoot[R]{\scriptsize ICN292 -- USM}
+\setlength{\headheight}{36pt}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\captionsetup{font=small,labelfont=bf}
+\newcommand{\evidencia}[3][0.95]{
+  \begin{figure}[H]\centering
+  \includegraphics[width=#1\linewidth,height=0.27\textheight,keepaspectratio]{capturas/#2.png}
+  \caption{#3}\end{figure}
+}
+\begin{document}
+\begin{titlepage}
+\thispagestyle{empty}
+\begin{center}
+\vspace*{1cm}
+\IfFileExists{header utfsm.png}{\includegraphics[width=0.60\textwidth]{header utfsm.png}}{
+{\Large\bfseries UNIVERSIDAD TÉCNICA FEDERICO SANTA MARÍA}\\[0.25cm]
+{\large Departamento de Industrias — Campus Vitacura}}
+\vspace{1.6cm}
+\par\noindent\rule{\linewidth}{0.8pt}\par\vspace{0.2cm}
+{\LARGE\bfseries Informe de Laboratorio N.º 5}\\[0.35cm]
+{\Large Bases de Datos y SQL — Andes Bike}\\[0.35cm]
+{\large Sistemas de Información para la Gestión (ICN292)}
+\vspace{0.2cm}\par\noindent\rule{\linewidth}{0.8pt}\par
+\vspace{1.5cm}
+{\Large\bfseries Sergio Martínez}\\[0.5cm]
+{\large Semestre 2026/02}\\[0.35cm]
+{\large Departamento de Industrias}\\[0.5cm]
+\vspace{0.7cm}
+\textbf{Repositorio público GitHub (verificar publicación):}\\[0.2cm]
+\url{https://github.com/Sergi9787/ICN292-Lab5-Martinez-Sergio}\\
+\vfill
+{\large Noviembre 2026}\\[0.35cm]
+{\large\theCampus}
+\end{center}
+\end{titlepage}
+\section*{Entregable 2: Consultas SQL}
+\subsection*{Consulta 1. Vendedores y cantidad de ventas}
+\begin{lstlisting}
+SELECT vd.nombre AS vendedor,
+       COUNT(v.id_venta) AS cantidad_ventas
+FROM vendedores vd
+LEFT JOIN ventas v ON v.id_vendedor = vd.id_vendedor
+GROUP BY vd.id_vendedor, vd.nombre
+ORDER BY cantidad_ventas DESC, vd.nombre ASC;
+\end{lstlisting}
+\evidencia[0.75]{c01}{Cantidad de ventas por vendedor, incluidos los vendedores sin ventas.}
+\FloatBarrier
+
+\subsection*{Consulta 2. Ventas y unidades vendidas por tienda}
+\begin{lstlisting}
+SELECT t.nombre AS tienda,
+       COUNT(v.id_venta) AS cantidad_ventas,
+       COALESCE(SUM(v.unidades), 0) AS unidades_vendidas
+FROM tiendas t
+LEFT JOIN vendedores vd ON vd.id_tienda = t.id_tienda
+LEFT JOIN ventas v ON v.id_vendedor = vd.id_vendedor
+GROUP BY t.id_tienda, t.nombre
+ORDER BY unidades_vendidas DESC;
+\end{lstlisting}
+\evidencia[0.8]{c02}{Ventas y unidades de cada tienda, incluida Andes La Serena.}
+\FloatBarrier
+
+\subsection*{Consulta 3. Tiendas sin vendedores asignados}
+\begin{lstlisting}
+SELECT t.nombre AS tienda
+FROM tiendas t
+LEFT JOIN vendedores vd ON vd.id_tienda = t.id_tienda
+WHERE vd.id_vendedor IS NULL;
+\end{lstlisting}
+\evidencia[0.55]{c03}{Tienda sin vendedores asignados.}
+\FloatBarrier
+
+\subsection*{Consulta 4. Modelos sin ventas en junio de 2025}
+\begin{lstlisting}
+-- El filtro temporal está en ON para conservar los modelos sin coincidencias.
+SELECT b.modelo
+FROM bicicletas b
+LEFT JOIN ventas v
+  ON v.id_bicicleta = b.id_bicicleta
+ AND v.fecha >= '2025-06-01'
+ AND v.fecha < '2025-07-01'
+WHERE v.id_venta IS NULL
+ORDER BY b.modelo;
+\end{lstlisting}
+\textbf{Explicación solicitada:} El filtro de junio de 2025 se colocó en la condición \texttt{ON} del \texttt{LEFT JOIN}, para mantener los modelos sin ventas en ese mes. Si se ubicara en \texttt{WHERE}, se excluirían las filas sin coincidencia y no se identificarían correctamente los modelos no vendidos.
+
+\evidencia[0.6]{c04}{Modelos sin ventas registradas durante junio de 2025.}
+\FloatBarrier
+
+\subsection*{Consulta 5. Vendedores que no registraron ventas}
+\begin{lstlisting}
+SELECT vd.nombre AS vendedor,
+       t.nombre AS tienda
+FROM vendedores vd
+LEFT JOIN ventas v ON v.id_vendedor = vd.id_vendedor
+LEFT JOIN tiendas t ON t.id_tienda = vd.id_tienda
+WHERE v.id_venta IS NULL
+ORDER BY vd.nombre;
+\end{lstlisting}
+\evidencia[0.7]{c05}{Vendedores sin ventas y nombre de su tienda, cuando existe.}
+\FloatBarrier
+
+\subsection*{Consulta 6. Pares de vendedores de una misma tienda}
+\begin{lstlisting}
+-- El más antiguo primero; ante empate, menor id_vendedor primero.
+SELECT a.nombre AS vendedor_1,
+       a.fecha_ingreso AS ingreso_1,
+       b.nombre AS vendedor_2,
+       b.fecha_ingreso AS ingreso_2,
+       t.nombre AS tienda
+FROM vendedores a
+JOIN vendedores b
+  ON a.id_tienda = b.id_tienda
+ AND (a.fecha_ingreso < b.fecha_ingreso
+      OR (a.fecha_ingreso = b.fecha_ingreso AND a.id_vendedor < b.id_vendedor))
+JOIN tiendas t ON t.id_tienda = a.id_tienda
+ORDER BY t.nombre, a.fecha_ingreso, b.fecha_ingreso, a.nombre, b.nombre;
+\end{lstlisting}
+\evidencia[0.94]{c06}{Pares únicos de vendedores de una misma tienda, con sus fechas de ingreso.}
+\FloatBarrier
+
+\subsection*{Consulta 7. Monto vendido de las categorías Montaña y Ruta}
+\begin{lstlisting}
+SELECT t.nombre AS tienda,
+       SUM(v.unidades * b.precio) AS monto_total
+FROM tiendas t
+JOIN vendedores vd ON vd.id_tienda = t.id_tienda
+JOIN ventas v ON v.id_vendedor = vd.id_vendedor
+JOIN bicicletas b ON b.id_bicicleta = v.id_bicicleta
+WHERE b.categoria IN ('Montaña', 'Ruta')
+GROUP BY t.id_tienda, t.nombre
+HAVING SUM(v.unidades * b.precio) > 2000000
+ORDER BY monto_total DESC;
+\end{lstlisting}
+\evidencia[0.75]{c07}{Tiendas cuyo monto de ventas de Montaña y Ruta supera los \$2.000.000.}
+\FloatBarrier
+
+\subsection*{Consulta 8. Bicicletas con precio superior al promedio}
+\begin{lstlisting}
+SELECT b.modelo, b.precio
+FROM bicicletas b
+WHERE b.precio > (SELECT AVG(precio) FROM bicicletas)
+ORDER BY b.precio DESC;
+\end{lstlisting}
+\textbf{Explicación solicitada:} El precio promedio del catálogo es \$657.490, obtenido mediante \texttt{AVG(precio)} sobre los ocho registros de la tabla \texttt{bicicletas}. La subconsulta utiliza ese promedio para filtrar los modelos más caros.
+
+\evidencia[0.65]{c08}{Modelos de bicicletas con precio superior al promedio del catálogo.}
+\begin{lstlisting}
+SELECT AVG(precio) AS precio_promedio_catalogo
+FROM bicicletas;
+\end{lstlisting}
+\evidencia[0.60]{promedio_catalogo}{Comprobación auxiliar del precio promedio del catálogo: \$657.490.}
+\FloatBarrier
+
+\subsection*{Consulta 9. Vendedores con promedio de unidades superior al general}
+\begin{lstlisting}
+SELECT vd.nombre AS vendedor,
+       AVG(v.unidades) AS promedio_unidades
+FROM vendedores vd
+JOIN ventas v ON v.id_vendedor = vd.id_vendedor
+GROUP BY vd.id_vendedor, vd.nombre
+HAVING AVG(v.unidades) > (SELECT AVG(unidades) FROM ventas)
+ORDER BY promedio_unidades DESC, vd.nombre ASC;
+\end{lstlisting}
+\evidencia[0.7]{c09}{Vendedores cuyo promedio de unidades por venta supera el promedio general.}
+\FloatBarrier
+
+\subsection*{Consulta 10. Monto total vendido por cada vendedor}
+\begin{lstlisting}
+SELECT vd.nombre AS vendedor,
+       SUM(v.unidades * b.precio) AS monto_total
+FROM vendedores vd
+LEFT JOIN ventas v ON v.id_vendedor = vd.id_vendedor
+LEFT JOIN bicicletas b ON b.id_bicicleta = v.id_bicicleta
+GROUP BY vd.id_vendedor, vd.nombre
+ORDER BY monto_total DESC;
+\end{lstlisting}
+\textbf{Explicación solicitada:} Los vendedores sin ventas muestran \texttt{NULL} porque \texttt{SUM()} no dispone de valores no nulos para sumar. Para mostrar cero, se debe usar \texttt{COALESCE(SUM(v.unidades * b.precio), 0)}.
+
+\evidencia[0.7]{c10}{Monto total vendido por cada vendedor, incluidos valores NULL.}
+\FloatBarrier
+
+\end{document}
